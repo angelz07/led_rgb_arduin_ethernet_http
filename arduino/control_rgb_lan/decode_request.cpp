@@ -56,11 +56,11 @@ String decode_request_http(String req) {
       retour = "0xF7E817";
     }
 
-    if (req.indexOf("/0xD9ER18") != -1) { // fading Massage
+    if (req.indexOf("/0xD9ER18") != -1) { // fading Relax
       retour = "0xD9ER18";
     }
 
-    if (req.indexOf("/status") != -1) { // fading Massage
+    if (req.indexOf("/status") != -1) { // Status
       retour = "status";
     }
 
@@ -126,19 +126,28 @@ String decode_request_http(String req) {
       
     }
 
-    if (req.indexOf("/1xclear") != -1) { // darker
+    
+    if (req.indexOf("/0xtest03F") != -1) { // Test On
+      retour = "0xtest03F";
+    }
+
+    if (req.indexOf("/0xtest14G") != -1) { // Test Off
+      retour = "0xtest14G";
+    }
+    
+    if (req.indexOf("/1xclear") != -1) { // clear Liste Color Fadding
       retour = "1xclear";
     }
 
-    if (req.indexOf("/1xstartfade") != -1) { // darker
+    if (req.indexOf("/1xstartfade") != -1) { // Start Fade
       retour = "1xstartfade";
     }
 
-    if (req.indexOf("/1xstopfade") != -1) { // darker
+    if (req.indexOf("/1xstopfade") != -1) { // Stop Fade
       retour = "1xstopfade";
     }
 
-    if (req.indexOf("/reboot") != -1) { // darker
+    if (req.indexOf("/reboot") != -1) { // Reboot
       retour = "reboot";
     }
 

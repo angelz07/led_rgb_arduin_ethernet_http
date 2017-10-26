@@ -17,6 +17,17 @@ int pinRelais=47;
 int pinReset=28;
 int pinLed=52;
 
+String status_on_off = "0";
+String status_fading = "0";
+String status_vitesse = "100";
+String status_intensite = "50";
+String status_cmd = "0";
+
+int rouge_defaut = 125;
+int vert_defaut = 52;
+int bleu_defaut = 241;
+
+
 String status_led = "0";
 simtronyx_RGB_LED strip(REDPIN,GREENPIN,BLUEPIN);
 
@@ -60,6 +71,7 @@ void setup() {
   digitalWrite(pinLed, HIGH);
   strip.animateColorTypeSet(ANIMATETYPE_RGB);
 
+  
 
 }
 
@@ -93,7 +105,7 @@ void loop() {
 
            String reponse_decodage = decode_request_http(req);
            Serial.println("");
-           if(reponse_decodage == "reboot"){
+           /*if(reponse_decodage == "reboot"){
             String repStatus = "HTTP/1.1 200 OK\r\n";
              repStatus += "Content-Type: text/html\r\n\r\n";
              repStatus += "<!DOCTYPE HTML>\r\n<html>\r\n";
@@ -111,71 +123,26 @@ void loop() {
              delay(5000);
              pushReset() ;
              break;
-           }
+           }*/
            if(reponse_decodage == "status"){
-
-             String repStatus = "HTTP/1.1 200 OK\r\n";
-             repStatus += "Content-Type: text/html\r\n\r\n";
-             repStatus += "<!DOCTYPE HTML>\r\n<html>\r\n";
-             repStatus += "<body>\n";
-             repStatus += "<span class='status_led'>";
-             repStatus += status_led;
-             repStatus += "</span>\n";
-             
-
-            repStatus += "</body>\n";
-            repStatus += "</html>\n";
-            
-           // client.print("status_led = ");
-            //client.println("Status: 200");
-            //client.println("Content-Type: text/html");
-            client.print(repStatus);
-            break;
+              reponseJson(client, "status");
+              delay(2000);
+              client.stop();
+              break;
            }
           
-           else{
-            String retour = action(reponse_decodage);
-            /*
-            if(retour == "1"){
-                 String repStatus = "HTTP/1.1 200 OK\r\n";
-                 repStatus += "Content-Type: text/html\r\n\r\n";
-                 repStatus += "<!DOCTYPE HTML>\r\n<html>\r\n";
-                 repStatus += "<body>\n";
-                 repStatus += "<span class='status_led'>";
-                 repStatus += retour;
-                 repStatus += "</span>\n";
-                 
-    
-                repStatus += "</body>\n";
-                repStatus += "</html>\n";
-                
-               // client.print("status_led = ");
-                //client.println("Status: 200");
-                //client.println("Content-Type: text/html");
-                client.print(repStatus);
-                break;
-              }
-            if(retour == "0"){
-                String repStatus = "HTTP/1.1 200 OK\r\n";
-               repStatus += "Content-Type: text/html\r\n\r\n";
-               repStatus += "<!DOCTYPE HTML>\r\n<html>\r\n";
-               repStatus += "<body>\n";
-               repStatus += "<span class='status_led'>";
-               repStatus += 0;
-               repStatus += "</span>\n";
-               
-  
-              repStatus += "</body>\n";
-              repStatus += "</html>\n";
-              
-             // client.print("status_led = ");
-              //client.println("Status: 200");
-              //client.println("Content-Type: text/html");
-              client.print(repStatus);
+           String isCommand = isCmd(reponse_decodage);
+            if (isCommand == "true") {
+              String retour = action(reponse_decodage);
+              delay(500);
+              reponseJson(client, "cmd_status");
+              delay(2000);
+              client.stop();
               break;
-              }
-              */
-           }
+            }
+            else {
+              String retour = action(reponse_decodage);
+            }
            
          }
 
@@ -213,7 +180,10 @@ void loop() {
 String action(String req){
   String retour = "0";
   if (req == "0xF740BF") { //checks if you clicked OFF
-    status_led="0";
+      status_led="0";
+      status_on_off = "0";
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
       strip.animateStop();
       digitalWrite(pinRelais,LOW); // off commande l'extinction
       delay(1000);
@@ -222,13 +192,23 @@ String action(String req){
     }
     if (req == "0xF7C03F") { //checks if you clicked ON
       status_led="1";
+      status_on_off = "1";
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
       strip.animateStop();
+      status_fading = "0";
+      strip.setRGB(rouge_defaut,vert_defaut,bleu_defaut);
       digitalWrite(pinRelais,HIGH); // on commande l'allumage
       delay(1000);
       Serial.println("ON");
       retour = "1";
     }
-   /* if (req == "0xF720DF") { //red
+   /* 
+    *  
+    *  int rouge_defaut = 125;
+int vert_defaut = 52;
+int bleu_defaut = 241;
+if (req == "0xF720DF") { //red
       status_led="1";
       strip.animateStop();
       strip.setRGB(255,0,0);
@@ -239,12 +219,15 @@ String action(String req){
 */
    
   if (req == "0xF700FF") { // brighter
-    status_led="1";
+      status_led="1";
       strip.useBrightnessAdjust( true );
       brightness = inc(brightness,10,100);
       strip.setBrightnessRGB(brightness);
       delay(1000);
       Serial.println(brightness);
+      Serial.println("brighter");
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
       retour = "1";
     }
 
@@ -255,6 +238,9 @@ String action(String req){
       strip.setBrightnessRGB(brightness);
       delay(1000);
       Serial.println(brightness);
+      Serial.println("darker");
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
       retour = "1";
     }
 
@@ -264,7 +250,9 @@ String action(String req){
       fadingDelay = inc(fadingDelay,100,5000);
       strip.animateSpeedSet(fadingDelay);
       delay(1000);
-      Serial.println("You clicked 9");
+      Serial.println("Slow");
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
       retour = "1";
     }
 
@@ -273,15 +261,21 @@ String action(String req){
       fadingDelay = dec(fadingDelay, 100 );
       strip.animateSpeedSet(fadingDelay);
       delay(1000);
-      Serial.println("You clicked 9");
+      Serial.println("Fast");
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
       retour = "1";
     }
 
    if (req == "0xF7E817") { // fading Massage
     status_led="1";
+    status_intensite = brightness;
+      status_vitesse = fadingDelay;
+      status_fading = "0";
       strip.animateStop();
       delay(50);
       digitalWrite(pinRelais,HIGH); // on commande l'allumage
+      status_on_off = "1";
       delay(50);
        strip.animateColorsClear();
        delay(50);
@@ -306,7 +300,7 @@ String action(String req){
        strip.animateColorAdd(112,4,178,FADING_STEPS);
        delay(50);
        strip.animateStart();
-
+      status_fading = "1";
       Serial.println("fading massage");
       retour = "1";
     }
@@ -314,8 +308,12 @@ String action(String req){
     if (req == "0xD9ER18") { // fading Massage
       status_led="1";
       strip.animateStop();
+      status_fading = "0";
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
       delay(50);
       digitalWrite(pinRelais,HIGH); // on commande l'allumage
+      status_on_off = "1";
       delay(50);
        strip.animateColorsClear();
        delay(50);
@@ -340,11 +338,14 @@ String action(String req){
        strip.animateColorAdd(36,65,255,FADING_STEPS);
        delay(50);
        strip.animateStart();
+       status_fading = "1";
        Serial.println("fading relax");
        retour = "1";
     }
 
     if (req.indexOf("rgb:") != -1) { // add color to list RGB
+      status_intensite = brightness;
+      status_vitesse = fadingDelay;
         int startRgbRetour = req.indexOf("rgb:");
         String rgb = req.substring(startRgbRetour+4);
        
@@ -373,7 +374,8 @@ String action(String req){
       }
 
       if (req.indexOf("color:") != -1) { // set Color
-        
+        status_intensite = brightness;
+      status_vitesse = fadingDelay;
         int startRgbRetour = req.indexOf("color:");
         String rgb = req.substring(startRgbRetour+6);
       
@@ -405,8 +407,9 @@ String action(String req){
         }
       }
       if (req == "1xclear") { // Clear List Fadding
-        
-        
+        status_intensite = brightness;
+      status_vitesse = fadingDelay;
+        status_fading = "0";
         strip.animateStop();
         delay(50); 
         strip.animateColorsClear();
@@ -418,23 +421,62 @@ String action(String req){
 
       if (req == "1xstopfade") { // Stop Fadding
         status_led="0";
+        status_intensite = brightness;
+      status_vitesse = fadingDelay;
         digitalWrite(pinRelais,LOW); // off commande l'extinction
+        status_on_off = "0";
         delay(50);
         strip.animateStop();
-        
+        status_fading = "0";
         delay(1000);
         Serial.println("Stop Fadding");
         retour = "1";
       }
 
       if (req == "1xstartfade") { // Start Fadding
-        status_led="0";
+        status_led="1";
+        status_intensite = brightness;
+      status_vitesse = fadingDelay;
         digitalWrite(pinRelais,HIGH); // on commande l'allumage
+        status_on_off = "1";
         delay(50);
         strip.animateStart();
-        
+        status_fading = "1";
         delay(1000);
         Serial.println("Start Fadding");
+        retour = "1";
+      }
+
+       if (req == "0xtest03F") { //Test ON
+        status_led="1";
+        status_on_off = "1";
+        status_intensite = brightness;
+        status_vitesse = fadingDelay;
+        strip.animateStop();
+        digitalWrite(pinRelais,HIGH); // on commande l'allumage
+        status_fading = "0";
+        Serial.println("Test On");
+    
+        retour = "1";
+      }
+      
+      if (req == "0xtest14G") { //Test OFF
+        status_on_off = "0";
+        status_intensite = brightness;
+        status_vitesse = fadingDelay;
+        strip.animateStart();
+        digitalWrite(pinRelais,LOW); // off commande l'extinction
+        status_fading = "1";
+        Serial.println("Test Off");
+    
+        retour = "1";
+      }
+
+      if (req == "reboot") { //Reboot
+        
+        Serial.println("Reboot");
+        delay(2000);
+        pushReset() ;
         retour = "1";
       }
 
@@ -454,4 +496,137 @@ int dec( int in, int delta ) {
   int r = in - delta;
   if( r < 0 ) r = 0;
   return r;
+}
+void reponseJson(EthernetClient client, String arg){
+    // On fait notre en-tête
+    // Tout d'abord le code de réponse 200 = réussite
+    client.println("HTTP/1.1 200 OK");
+    // Puis le type mime du contenu renvoyé, du json
+    client.println("Content-Type: application/json");
+    // Et c'est tout !
+    // On envoie une ligne vide pour signaler la fin du header
+    client.println();
+
+    if(arg == "status"){
+      // Puis on commence notre JSON par une accolade ouvrante
+      client.println("{");
+      
+      // On envoie la première clé : "status_on_off"
+      client.print("\t\"status_on_off\": ");
+      // Puis la valeur de status_on_off
+      client.print(status_on_off);
+      //Une petite virgule pour séparer les deux clés
+      client.println(",");
+      // Et on envoie la seconde nommée "status_fading"
+      client.print("\t\"status_fading\": ");
+      client.println(status_fading);
+      //Une petite virgule pour séparer les deux clés
+      client.println(",");
+      // Et on envoie la seconde nommée "status_vitesse"
+      client.print("\t\"status_vitesse\": ");
+      client.println(status_vitesse);
+      //Une petite virgule pour séparer les deux clés
+      client.println(",");
+      // Et on envoie la seconde nommée "status_intensite"
+      client.print("\t\"status_intensite\": ");
+      client.println(status_intensite);
+      
+  
+      // Et enfin on termine notre JSON par une accolade fermante
+      client.println("}");
+    }
+
+    if(arg == "cmd_status"){
+      // Puis on commence notre JSON par une accolade ouvrante
+      client.println("{");
+      
+      // On envoie la première clé : "status_on_off"
+      client.print("\t\"status_on_off\": ");
+      // Puis la valeur de status_on_off
+      client.print(status_on_off);
+      //Une petite virgule pour séparer les deux clés
+      client.println(",");
+      // Et on envoie la seconde nommée "status_fading"
+      client.print("\t\"status_fading\": ");
+      client.println(status_fading);
+      //Une petite virgule pour séparer les deux clés
+      client.println(",");
+      // Et on envoie la seconde nommée "status_vitesse"
+      client.print("\t\"status_vitesse\": ");
+      client.println(status_vitesse);
+      //Une petite virgule pour séparer les deux clés
+      client.println(",");
+      // Et on envoie la seconde nommée "status_intensite"
+      client.print("\t\"status_intensite\": ");
+      client.println(status_intensite);
+      //Une petite virgule pour séparer les deux clés
+      client.println(",");
+      // Et on envoie la seconde nommée "status_intensite"
+      client.print("\t\"status_cmd\": ");
+      client.println("1");
+      
+      // Et enfin on termine notre JSON par une accolade fermante
+      client.println("}");
+    }
+    
+    // Donne le temps au client de prendre les données
+    delay(50);
+  }
+
+String isCmd(String arg){
+  String retour = "false";
+  if (arg == "0xF7C03F"){ //ON
+    retour = "true";
+  }
+  if (arg == "0xF740BF"){ //OFF
+    retour = "true";
+  }
+  
+  if (arg == "0xtest03F"){ //Test On
+    retour = "true";
+  }
+  if (arg == "0xtest14G"){ //Test OFF
+    retour = "true";
+  }
+  if (arg == "0xF700FF"){ // brighter
+    retour = "true";
+  }
+  if (arg == "0xF7807F"){ // darker
+    retour = "true";
+  }
+  if (arg == "0xF7D02F"){ // slower
+    retour = "true";
+  }
+  if (arg == "0xF7F00F"){ // faster
+    retour = "true";
+  }
+  if (arg == "0xF7E817"){ // fading Massage
+    retour = "true";
+  }
+  if (arg == "0xD9ER18"){ // fading Massage
+    retour = "true";
+  }
+  if (arg == "1xclear"){ // Clear List Fadding
+    retour = "true";
+  }
+  if (arg == "1xstopfade"){ // Stop Fadding
+    retour = "true";
+  }
+  if (arg == "1xstartfade"){ // Start Fadding
+    retour = "true";
+  }
+  if (arg == "reboot"){ // reboot
+    retour = "true";
+  }
+
+  
+  if (arg.indexOf("rgb:") != -1){ // add color to list RGB
+    retour = "true";
+  }
+  if (arg.indexOf("color:") != -1){ // set Color
+    retour = "true";
+  }
+ 
+  return retour;
+  
 }
